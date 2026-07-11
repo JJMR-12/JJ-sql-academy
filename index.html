@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nortia SQL Academy — Aprende SQL con ejercicios prácticos</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p><strong>Cargando el motor SQL...</strong></p>
+    <p style="color:#5c6478; font-size:0.85rem;">Estamos preparando una base de datos SQLite en tu navegador para que puedas ejecutar consultas reales.</p>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header" id="brand-btn" role="button" tabindex="0">
+      <div class="brand">Nortia SQL Academy</div>
+      <div class="tagline">De cero a profesional: aprende SQL escribiendo y ejecutando consultas reales.</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menú">☰</button>
+      <div class="topbar-titles">
+        <h1 id="top-title">Cargando...</h1>
+        <span id="top-badge"></span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" id="playground-btn">Playground SQL libre</button>
+        <button class="btn btn-secondary" id="schema-btn">Ver esquema</button>
+        <button class="btn btn-danger" id="reset-db-btn">Reiniciar base de datos</button>
+      </div>
+    </header>
+
+    <div class="content-scroll">
+      <div id="module-container"></div>
+      <nav class="module-nav-bottom" id="module-nav-bottom">
+        <button class="btn" id="prev-btn">← Anterior</button>
+        <button class="btn btn-primary" id="next-btn">Siguiente →</button>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="schema-modal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h3>Esquema de la base de datos "Nortia Comercial"</h3>
+      <button class="modal-close" id="schema-close" aria-label="Cerrar">&times;</button>
+    </div>
+    <div id="schema-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="js/schema.js"></script>
+<script src="js/lessons.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
