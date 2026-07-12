@@ -16,6 +16,40 @@
   </div>
 </div>
 
+<script>
+  // Red de seguridad: si a los 20s la app no arrancó (CDN lento o bloqueado),
+  // mostrar un error claro en vez de dejar el spinner girando para siempre.
+  window.setTimeout(function () {
+    var loading = document.getElementById("loading-screen");
+    if (loading && !loading.classList.contains("hidden")) {
+      loading.innerHTML =
+        '<div class="loading-box"><p><strong>No se pudo cargar la aplicación.</strong></p>' +
+        "<p>Puede deberse a una conexión lenta o a un bloqueo de los CDN (sql.js / Supabase). " +
+        "Verifica tu conexión a internet y recarga la página.</p></div>";
+    }
+  }, 20000);
+</script>
+
+<div id="auth-screen" class="hidden">
+  <div class="auth-card">
+    <div class="auth-brand">Nortia SQL Academy</div>
+    <p class="auth-tagline">Inicia sesión para guardar tu progreso y tus ejercicios en todos tus dispositivos.</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" type="button">Iniciar sesión</button>
+      <button class="auth-tab" id="tab-signup" type="button">Crear cuenta</button>
+    </div>
+    <form id="auth-form" autocomplete="on">
+      <label class="auth-label" for="auth-username">Usuario</label>
+      <input class="auth-input" id="auth-username" name="username" type="text" autocomplete="username" spellcheck="false" placeholder="tu_usuario">
+      <label class="auth-label" for="auth-password">Contraseña</label>
+      <input class="auth-input" id="auth-password" name="password" type="password" autocomplete="current-password" placeholder="••••••••">
+      <div class="auth-error hidden" id="auth-error"></div>
+      <button class="btn btn-primary auth-submit" id="auth-submit" type="submit">Iniciar sesión</button>
+    </form>
+    <p class="auth-hint" id="auth-hint">Solo necesitas un nombre de usuario y una contraseña (mínimo 6 caracteres).</p>
+  </div>
+</div>
+
 <div id="app" class="app hidden">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header" id="brand-btn" role="button" tabindex="0">
@@ -36,6 +70,10 @@
         <button class="btn btn-secondary" id="playground-btn">Playground SQL libre</button>
         <button class="btn btn-secondary" id="schema-btn">Ver esquema</button>
         <button class="btn btn-danger" id="reset-db-btn">Reiniciar base de datos</button>
+      </div>
+      <div class="topbar-user" id="topbar-user">
+        <span class="user-name" id="user-name"></span>
+        <button class="btn btn-secondary" id="logout-btn">Salir</button>
       </div>
     </header>
 
@@ -62,8 +100,10 @@
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.2/dist/umd/supabase.min.js"></script>
 <script src="js/schema.js"></script>
 <script src="js/lessons.js"></script>
+<script src="js/supabase-api.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -4,12 +4,12 @@
   "use strict";
 
   const CATEGORY_ORDER = ["Fundamentos", "Básico", "Intermedio", "Avanzado", "Profesional"];
-  const PROGRESS_KEY = "sqlAcademy_progress_v1";
 
   let db = null;
   let initialSnapshot = null;
   let currentId = "home";
-  let visited = new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || "[]"));
+  let visited = new Set(); // se llena desde Supabase al iniciar sesión
+  let playgroundExportSet = null;
 
   const el = {
     loading: document.getElementById("loading-screen"),
@@ -29,12 +29,52 @@
     schemaClose: document.getElementById("schema-close"),
     schemaBody: document.getElementById("schema-body"),
     toast: document.getElementById("toast"),
+    authScreen: document.getElementById("auth-screen"),
+    authForm: document.getElementById("auth-form"),
+    authUsername: document.getElementById("auth-username"),
+    authPassword: document.getElementById("auth-password"),
+    authError: document.getElementById("auth-error"),
+    authSubmit: document.getElementById("auth-submit"),
+    authHint: document.getElementById("auth-hint"),
+    tabLogin: document.getElementById("tab-login"),
+    tabSignup: document.getElementById("tab-signup"),
+    userName: document.getElementById("user-name"),
+    logoutBtn: document.getElementById("logout-btn"),
   };
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     })[c]);
+  }
+
+  function escapeCsvValue(value) {
+    if (value === null || value === undefined) return "";
+    const str = String(value);
+    if (/[",\r\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
+
+  function buildCsv(set) {
+    const lines = [set.columns.map(escapeCsvValue).join(",")];
+    set.values.forEach((row) => {
+      lines.push(row.map(escapeCsvValue).join(","));
+    });
+    return lines.join("\r\n");
+  }
+
+  function triggerCsvDownload(csvText, filename) {
+    const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   function showToast(message) {
@@ -193,6 +233,7 @@
           <textarea class="sql-input" id="playground-input" spellcheck="false" placeholder="SELECT * FROM empleados;">SELECT * FROM empleados;</textarea>
           <div class="exercise-actions">
             <button class="btn btn-primary" data-action="run-playground">Ejecutar</button>
+            <button class="btn btn-secondary hidden" id="playground-download-csv" data-action="download-csv">Descargar CSV</button>
           </div>
           <div class="result-area" id="playground-result"></div>
         </div>
@@ -218,7 +259,7 @@
           <p class="exercise-prompt">${escapeHtml(ex.enunciado)}</p>
           <textarea class="sql-input" id="${inputId}" spellcheck="false" placeholder="-- escribe tu consulta aquí"></textarea>
           <div class="exercise-actions">
-            <button class="btn btn-primary" data-action="run-exercise" data-input="${inputId}" data-result="${resultId}">Ejecutar</button>
+            <button class="btn btn-primary" data-action="run-exercise" data-input="${inputId}" data-result="${resultId}" data-module="${mod.id}" data-exercise="${i}">Ejecutar</button>
             <button class="btn btn-secondary" data-action="toggle-solution" data-target="${solId}" data-sol-result="${solResultId}" data-sql="${encodeURIComponent(ex.solucion)}">Ver solución</button>
           </div>
           <div class="result-area" id="${resultId}"></div>
@@ -257,7 +298,7 @@
     currentId = id;
     if (id !== "playground" && id !== "home") {
       visited.add(id);
-      localStorage.setItem(PROGRESS_KEY, JSON.stringify([...visited]));
+      NortiaBackend.saveProgress(id, "visitado");
     }
     updateSidebarActive();
 
@@ -323,7 +364,20 @@
     if (action === "run-playground") {
       const input = document.getElementById("playground-input");
       const result = document.getElementById("playground-result");
-      renderResult(result, runSQL(input.value));
+      const outcome = runSQL(input.value);
+      renderResult(result, outcome);
+
+      const downloadBtn = document.getElementById("playground-download-csv");
+      const exportable = outcome.ok && outcome.res
+        ? [...outcome.res].reverse().find((set) => set.values.length > 0)
+        : null;
+      playgroundExportSet = exportable || null;
+      downloadBtn.classList.toggle("hidden", !exportable);
+    }
+
+    if (action === "download-csv") {
+      if (!playgroundExportSet) return;
+      triggerCsvDownload(buildCsv(playgroundExportSet), "resultado.csv");
     }
 
     if (action === "run-example") {
@@ -335,7 +389,18 @@
     if (action === "run-exercise") {
       const input = document.getElementById(btn.dataset.input);
       const result = document.getElementById(btn.dataset.result);
-      renderResult(result, runSQL(input.value));
+      const outcome = runSQL(input.value);
+      renderResult(result, outcome);
+
+      const moduleId = btn.dataset.module;
+      const exIdx = parseInt(btn.dataset.exercise, 10);
+      NortiaBackend.logAttempt(moduleId, exIdx, input.value, outcome.ok, outcome.ok ? null : outcome.error);
+
+      if (outcome.ok && moduleId) {
+        visited.add(moduleId);
+        NortiaBackend.saveProgress(moduleId, "completado");
+        updateSidebarActive();
+      }
     }
 
     if (action === "toggle-solution") {
@@ -400,17 +465,113 @@
     el.app.classList.remove("sidebar-open");
   });
 
+  // ---------- Autenticación ----------
+
+  let authMode = "login"; // "login" | "signup"
+  let appBooted = false;
+
+  function showAuthError(msg) {
+    el.authError.textContent = msg;
+    el.authError.classList.remove("hidden");
+  }
+  function hideAuthError() {
+    el.authError.classList.add("hidden");
+  }
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    const isLogin = mode === "login";
+    el.tabLogin.classList.toggle("active", isLogin);
+    el.tabSignup.classList.toggle("active", !isLogin);
+    el.authSubmit.textContent = isLogin ? "Iniciar sesión" : "Crear cuenta";
+    el.authPassword.setAttribute("autocomplete", isLogin ? "current-password" : "new-password");
+    el.authHint.textContent = isLogin
+      ? "Ingresa el usuario y la contraseña con los que te registraste."
+      : "Elige un usuario (letras, números, guion bajo o punto) y una contraseña de mínimo 6 caracteres.";
+    hideAuthError();
+  }
+
+  function showAuthScreen() {
+    el.loading.classList.add("hidden");
+    el.app.classList.add("hidden");
+    el.authScreen.classList.remove("hidden");
+    el.authUsername.focus();
+  }
+
+  // Carga el progreso del usuario, arma la UI y muestra la app.
+  async function enterApp() {
+    try {
+      visited = new Set(await NortiaBackend.loadProgress());
+    } catch (e) { /* si falla la carga, se arranca sin progreso previo */ }
+    try {
+      const profile = await NortiaBackend.getProfile();
+      if (profile && profile.username) el.userName.textContent = profile.username;
+    } catch (e) { /* opcional */ }
+
+    el.authScreen.classList.add("hidden");
+    el.loading.classList.add("hidden");
+    el.app.classList.remove("hidden");
+    boot();
+  }
+
+  el.tabLogin.addEventListener("click", () => setAuthMode("login"));
+  el.tabSignup.addEventListener("click", () => setAuthMode("signup"));
+
+  el.authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    hideAuthError();
+    const username = el.authUsername.value.trim();
+    const password = el.authPassword.value;
+
+    if (!/^[a-zA-Z0-9_.]{3,30}$/.test(username)) {
+      showAuthError("El usuario debe tener 3-30 caracteres: letras, números, guion bajo o punto.");
+      return;
+    }
+    if (password.length < 6) {
+      showAuthError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    const labelDefault = authMode === "login" ? "Iniciar sesión" : "Crear cuenta";
+    el.authSubmit.disabled = true;
+    el.authSubmit.textContent = "Un momento…";
+    try {
+      if (authMode === "signup") {
+        const res = await NortiaBackend.signUp(username, password);
+        if (res.needsConfirm) {
+          showAuthError("La cuenta se creó, pero falta desactivar la confirmación por email en Supabase para poder entrar (ver instrucciones).");
+          el.authSubmit.disabled = false;
+          el.authSubmit.textContent = labelDefault;
+          return;
+        }
+      } else {
+        await NortiaBackend.signIn(username, password);
+      }
+      await enterApp();
+    } catch (err) {
+      showAuthError(err.message || "No se pudo completar. Intenta de nuevo.");
+      el.authSubmit.disabled = false;
+      el.authSubmit.textContent = labelDefault;
+    }
+  });
+
+  if (el.logoutBtn) {
+    el.logoutBtn.addEventListener("click", async () => {
+      await NortiaBackend.signOut();
+      location.reload();
+    });
+  }
+
   // ---------- Arranque ----------
 
   function boot() {
+    if (appBooted) return;
+    appBooted = true;
     buildSidebar();
     buildSchemaModal();
     const initialId = location.hash ? location.hash.slice(1) : "home";
     const valid = initialId === "home" || initialId === "playground" || MODULES.some((m) => m.id === initialId);
     selectSection(valid ? initialId : "home");
-
-    el.loading.classList.add("hidden");
-    el.app.classList.remove("hidden");
   }
 
   function showLoadError(err) {
@@ -435,12 +596,20 @@
       showLoadError(new Error("El script de sql.js no se cargó."));
       return;
     }
+    if (!window.supabase || typeof window.supabase.createClient !== "function") {
+      showLoadError(new Error("No se pudo cargar Supabase (revisa tu conexión a internet)."));
+      return;
+    }
     initSqlJs({
       locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
     })
       .then((SQL) => {
         initDatabase(SQL);
-        boot();
+        return NortiaBackend.init();
+      })
+      .then((session) => {
+        if (session) return enterApp();
+        showAuthScreen();
       })
       .catch(showLoadError);
   });

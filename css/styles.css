@@ -72,6 +72,122 @@ code, pre, textarea.sql-input {
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-error { color: var(--error); font-size: 0.85rem; margin-top: 0.75rem; word-break: break-word; }
 
+/* Pantalla de login / registro */
+#auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(79, 157, 114, 0.10), transparent 60%),
+    var(--bg);
+}
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1.8rem;
+}
+.auth-brand {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  text-align: center;
+}
+.auth-tagline {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 0.5rem 0 1.4rem;
+  line-height: 1.5;
+}
+.auth-tabs {
+  display: flex;
+  gap: 0.4rem;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.25rem;
+  margin-bottom: 1.3rem;
+}
+.auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.auth-tab.active {
+  background: var(--accent-soft-bg);
+  color: var(--accent-dark);
+}
+.auth-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+.auth-input {
+  width: 100%;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+.auth-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.auth-error {
+  background: var(--error-bg);
+  color: var(--error);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.82rem;
+  margin-bottom: 1rem;
+  line-height: 1.45;
+}
+.auth-submit {
+  width: 100%;
+  padding: 0.7rem;
+  font-size: 0.95rem;
+}
+.auth-hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: center;
+  margin: 1rem 0 0;
+  line-height: 1.5;
+}
+
+/* Chip de usuario en la topbar */
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.user-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-dark);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* App shell */
 .app {
   display: flex;
